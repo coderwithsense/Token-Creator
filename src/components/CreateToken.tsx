@@ -3,6 +3,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { Keypair, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
 import { MINT_SIZE, TOKEN_PROGRAM_ID, createInitializeMintInstruction, getMinimumBalanceForRentExemptMint, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createMintToInstruction } from '@solana/spl-token';
 import { createCreateMetadataAccountV3Instruction, PROGRAM_ID } from '@metaplex-foundation/mpl-token-metadata';
+import { notify } from 'utils/notifications';
 
 export const CreateToken: FC = () => {
   const { connection } = useConnection();
@@ -14,6 +15,7 @@ export const CreateToken: FC = () => {
   const [decimals, setDecimals] = useState('')
 
   const onClick = useCallback(async (form) => {
+    try {
       const lamports = await getMinimumBalanceForRentExemptMint(connection);
       const mintKeypair = Keypair.generate();
       const tokenATA = await getAssociatedTokenAddress(mintKeypair.publicKey, publicKey);
@@ -52,17 +54,17 @@ export const CreateToken: FC = () => {
 
       const createNewTokenTransaction = new Transaction().add(
         SystemProgram.createAccount({
-            fromPubkey: publicKey,
-            newAccountPubkey: mintKeypair.publicKey,
-            space: MINT_SIZE,
-            lamports: lamports,
-            programId: TOKEN_PROGRAM_ID,
+          fromPubkey: publicKey,
+          newAccountPubkey: mintKeypair.publicKey,
+          space: MINT_SIZE,
+          lamports: lamports,
+          programId: TOKEN_PROGRAM_ID,
         }),
         createInitializeMintInstruction(
-          mintKeypair.publicKey, 
-          form.decimals, 
-          publicKey, 
-          publicKey, 
+          mintKeypair.publicKey,
+          form.decimals,
+          publicKey,
+          publicKey,
           TOKEN_PROGRAM_ID),
         createAssociatedTokenAccountInstruction(
           publicKey,
@@ -78,7 +80,11 @@ export const CreateToken: FC = () => {
         ),
         createMetadataInstruction
       );
-      await sendTransaction(createNewTokenTransaction, connection, {signers: [mintKeypair]});
+      const transaction = await sendTransaction(createNewTokenTransaction, connection, { signers: [mintKeypair] });
+      notify({ message: 'Token created: ' + transaction + " ", type: 'success' })
+    } catch (e) {
+      notify({ message: e.message, type: 'error' })
+    }
   }, [publicKey, connection, sendTransaction]);
 
   return (
@@ -113,11 +119,11 @@ export const CreateToken: FC = () => {
         placeholder="Decimals"
         onChange={(e) => setDecimals(e.target.value)}
       />
-      
+
       <button
         className="px-8 m-2 btn animate-pulse bg-gradient-to-r from-[#9945FF] to-[#14F195] hover:from-pink-500 hover:to-yellow-500 ..."
-        onClick={() => onClick({decimals: Number(decimals), amount: Number(amount), metadata: metadata, symbol: symbol, tokenName: tokenName})}>
-          <span>Create Token</span>
+        onClick={() => onClick({ decimals: Number(decimals), amount: Number(amount), metadata: metadata, symbol: symbol, tokenName: tokenName })}>
+        <span>Create Token</span>
       </button>
     </div>
   )

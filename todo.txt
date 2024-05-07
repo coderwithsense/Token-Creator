@@ -1,0 +1,8 @@
+create market: https://solana.stackexchange.com/questions/10061/create-pool-on-raydium-using-js-ts
+
+create pool: https://github.com/raydium-io/raydium-sdk-V1-demo/blob/master/src/ammCreatePool.ts
+
+https://github.com/solana-labs/solana-program-library/blob/d72289c79/token/js/src/instructions/freezeAccount.ts#L33
+
+https://github.com/raydium-io/raydium-sdk-V1-demo/blob/master/src/utilsCreateMarket.ts
+

@@ -6,6 +6,8 @@ import {
   createUpdateMetadataAccountV2Instruction,
   PROGRAM_ID
 } from "@metaplex-foundation/mpl-token-metadata";
+import { notify } from 'utils/notifications';
+import { sendTx, wallet } from 'utils/util';
 
 export const UpdateMetadata: FC = () => {
   const { connection } = useConnection();
@@ -17,9 +19,10 @@ export const UpdateMetadata: FC = () => {
 
 
   const onClick = useCallback(async (form) => {
+    try {
       const mint = new PublicKey(form.tokenMint)
     console.log(mint.toString())
-    console.log(form.tokenMint)
+    console.log(form)
       const metadataPDA = PublicKey.findProgramAddressSync(
         [
           Buffer.from("metadata"),
@@ -28,6 +31,8 @@ export const UpdateMetadata: FC = () => {
         ],
         PROGRAM_ID,
       )[0]
+
+      console.log('metadata' + metadataPDA.toString())
     
       const tokenMetadata = {
         name: form.tokenName, 
@@ -55,7 +60,13 @@ export const UpdateMetadata: FC = () => {
           }
         )
       );
-      await sendTransaction(updateMetadataTransaction, connection);
+      const txid = await sendTransaction(updateMetadataTransaction, connection);
+      // const txid = await sendTx(connection, wallet, [updateMetadataTransaction])
+      console.log('txid: ', txid)
+    } catch (e) {
+      notify({message: e.message, type: 'error'})
+    }
+      
   }, [publicKey, connection, sendTransaction]);
 
   return (

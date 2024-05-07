@@ -14,7 +14,7 @@ const App: FC<AppProps> = ({ Component, pageProps }) => {
     return (
         <>
           <Head>
-            <title>Solana Scaffold Lite</title>
+            <title>Solana Token Maker</title>
           </Head>
 
           <ContextProvider>

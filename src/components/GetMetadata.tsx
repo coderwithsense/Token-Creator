@@ -2,6 +2,7 @@ import { FC, useState, useCallback } from 'react';
 import { useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 import { Metadata, PROGRAM_ID } from '@metaplex-foundation/mpl-token-metadata';
+import { notify } from 'utils/notifications';
 
 export const GetMetadata: FC = () => {
   const { connection } = useConnection();
@@ -27,6 +28,9 @@ export const GetMetadata: FC = () => {
       const [metadata, _] = await Metadata.deserialize(metadataAccount.data);
       console.log(metadata);
       let logoRes = await fetch(metadata.data.uri);
+      if(!logoRes.ok) {
+        notify({message: 'Failed to fetch logo, maybe uri is not valid, try updating the uri', type: 'error'});
+      }
       let logoJson = await logoRes.json();
       let { image } = logoJson;
       setTokenMetadata({ tokenMetadata, ...metadata.data });

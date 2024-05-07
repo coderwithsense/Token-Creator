@@ -125,13 +125,12 @@ export const UploadMetadata: FC = ({}) => {
     const price = await bundlr.utils.getPrice('solana', imageFile.length);
     let amount = bundlr.utils.unitConverter(price);
     amount = amount.toNumber();
-
     const loadedBalance = await bundlr.getLoadedBalance();
     let balance = bundlr.utils.unitConverter(loadedBalance.toNumber());
     balance = balance.toNumber();
 
     if (balance < amount) {
-      await bundlr.fund(LAMPORTS_PER_SOL);
+      await bundlr.fund(1);
     }
 
     const imageResult = await bundlr.uploader.upload(imageFile, [
