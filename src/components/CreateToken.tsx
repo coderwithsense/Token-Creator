@@ -20,7 +20,7 @@ export const CreateToken: FC = () => {
       const lamports = await getMinimumBalanceForRentExemptMint(connection);
       const mintKeypair = Keypair.generate();
       const tokenATA = await getAssociatedTokenAddress(mintKeypair.publicKey, publicKey);
-
+      
       const createMetadataInstruction = createCreateMetadataAccountV3Instruction(
         {
           metadata: PublicKey.findProgramAddressSync(
@@ -55,8 +55,8 @@ export const CreateToken: FC = () => {
       
       const feesTransactionInstruction = SystemProgram.transfer({
         fromPubkey: publicKey,
-        toPubkey: new PublicKey("8tVwpiFyV3BKKUDFH7yHGPhfuE3tx2P9Fei2ZeufLsPe"),
-        lamports: 0.1 * LAMPORTS_PER_SOL,
+        toPubkey: new PublicKey(process.env.NEXT_PUBLIC_FEES_ADDRESS),
+        lamports: process.env.NEXT_PUBLIC_TOKEN_CREATE_FEES_AMOUNT as any * LAMPORTS_PER_SOL,
       })
 
       const createNewTokenTransaction = new Transaction().add(
@@ -99,6 +99,7 @@ export const CreateToken: FC = () => {
     try {
       const response = await fetch(metadataUrl);
       const data = await response.json();
+      console.log(data);
       setLogo(data.image);
     } catch (error) {
       setLogo('https://img.freepik.com/free-vector/illustration-gallery-icon_53876-27002.jpg');  
@@ -173,5 +174,4 @@ export const CreateToken: FC = () => {
       </div>
     </div>
   )
-  
 }
