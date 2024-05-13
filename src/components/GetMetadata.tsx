@@ -13,7 +13,8 @@ export const GetMetadata: FC = () => {
 
   const getMetadata = useCallback(
     async (form) => {
-      const tokenMint = new PublicKey(form.tokenAddress);
+      try {
+        const tokenMint = new PublicKey(form.tokenAddress);
       const metadataPDA = PublicKey.findProgramAddressSync(
 				[
 					Buffer.from("metadata"),
@@ -37,6 +38,9 @@ export const GetMetadata: FC = () => {
       setLogo(image);
       setLoaded(true);
       setTokenAddress('')
+      } catch (error) {
+        notify({message: 'Failed to fetch metadata', type: 'error'});
+      }
     },
     [tokenAddress]
   );

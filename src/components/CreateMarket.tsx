@@ -1,3 +1,12 @@
+import {
+    AnchorProvider,
+    BN,
+    Program,
+    Wallet,
+    getProvider,
+  } from "@coral-xyz/anchor";
+import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
+import { OpenBookV2Client } from '@openbook-dex/openbook-v2';
 import { DEVNET_PROGRAM_ID, MAINNET_PROGRAM_ID, MarketV2, TxVersion, buildSimpleTransaction } from '@raydium-io/raydium-sdk'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { Button } from '@solana/wallet-adapter-react-ui/lib/types/Button';
@@ -69,48 +78,88 @@ const CreateMarket = () => {
     //     }
     // }
 
+    // async function onClick() {
+    //     try {
+    //         // -------- step 1: make instructions --------
+    //         const marketInstructions = await MarketV2.makeCreateMarketInstructionSimple({
+    //             makeTxVersion: TxVersion.V0,
+    //             connection,
+    //             wallet: publicKey,
+    //             baseInfo: {
+    //                 mint: new PublicKey('EgmaVvE8cEXGH2eKSVPhDCwEaz5XeTR1jk6564XzxVJk'),
+    //                 decimals: 9
+    //             },
+    //             quoteInfo: {
+    //                 mint: new PublicKey('Abi6fLGeFShKjBWy88Nd7YUV5sHKBCPpEyoVwbeViPTw'),
+    //                 decimals: 9
+    //             },
+    //             lotSize: 1, // default 1
+    //             tickSize: 0.00001, // default 0.00001
+    //             dexProgramId: new PublicKey('srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX')
+    //         })
+    //         // -------- step 2: build transaction --------
+    //         const transactions = await buildSimpleTransaction({
+    //             connection,
+    //             makeTxVersion: TxVersion.V0,
+    //             payer: publicKey,
+    //             innerTransactions: marketInstructions.innerTransactions,
+    //             addLookupTableInfo: addLookupTableInfo,
+    //         });
+    //         // -------- step 3: send transaction --------
+    //         // const txids = await sendTransaction(transactions[0], connection);
+    //         // const txids = await sendTransactions(sendTransaction, transactions, connection);
+    //         // console.log('Market Created')
+    //         // console.log('Create Market Transactions :', txids)
+    //         console.log(marketInstructions.innerTransactions)
+    //         return { txids: await buildAndSendTx(marketInstructions.innerTransactions) }
+
+    //         // const tokenAccounts = await getWalletTokenAccount(connection, new PublicKey('6YTgVdkjrirrFKrCvVs6w5rF5MMjEkD4w44L1gAzvA6x'));
+    //         // console.log('mintAddress :', tokenAccounts[20].accountInfo.mint.toString())
+    //         // console.log('amountOfTokenWithDecimals :', tokenAccounts[20].accountInfo.amount.toString())
+    //         // console.log('accountAddress: ', tokenAccounts[20].pubkey.toString())
+    //     } catch (error) {
+    //         console.error(error);
+    //     }}
+
     async function onClick() {
-        try {
-            // -------- step 1: make instructions --------
-            const marketInstructions = await MarketV2.makeCreateMarketInstructionSimple({
-                makeTxVersion: TxVersion.V0,
-                connection,
-                wallet: publicKey,
-                baseInfo: {
-                    mint: new PublicKey('3imE3vkQKvYp6NVc2QdzMi1aqhNgwq8pNn9ppGSrNS6L'),
-                    decimals: 9
-                },
-                quoteInfo: {
-                    mint: new PublicKey('Abi6fLGeFShKjBWy88Nd7YUV5sHKBCPpEyoVwbeViPTw'),
-                    decimals: 9
-                },
-                lotSize: 1, // default 1
-                tickSize: 0.00001, // default 0.00001
-                dexProgramId: new PublicKey('EoTcMgcDRTJVZDMZWBoU6rhYHZfkNTVEAfz3uUJRcYGj')
-            })
-            // -------- step 2: build transaction --------
-            const transactions = await buildSimpleTransaction({
-                connection,
-                makeTxVersion: TxVersion.V0,
-                payer: publicKey,
-                innerTransactions: marketInstructions.innerTransactions,
-                addLookupTableInfo: addLookupTableInfo,
-            });
-            // -------- step 3: send transaction --------
-            // const txids = await sendTransaction(transactions[0], connection);
-            // const txids = await sendTransactions(sendTransaction, transactions, connection);
-            // console.log('Market Created')
-            // console.log('Create Market Transactions :', txids)
-
-            return { txids: await buildAndSendTx(marketInstructions.innerTransactions) }
-
-            // const tokenAccounts = await getWalletTokenAccount(connection, new PublicKey('6YTgVdkjrirrFKrCvVs6w5rF5MMjEkD4w44L1gAzvA6x'));
-            // console.log('mintAddress :', tokenAccounts[20].accountInfo.mint.toString())
-            // console.log('amountOfTokenWithDecimals :', tokenAccounts[20].accountInfo.amount.toString())
-            // console.log('accountAddress: ', tokenAccounts[20].pubkey.toString())
-        } catch (error) {
-            console.error(error);
-        }
+        const wall = new NodeWallet(wallet);
+        const provider = new AnchorProvider(connection, wall, {
+            commitment: "confirmed",
+        })
+        const programId = new PublicKey(
+            "opnb2LAfJYbRMAHHvqjCwQxanZn7ReEHp1k81EohpZb"
+        );
+        const client = new OpenBookV2Client(provider, programId)
+        console.log(
+            "starting with balance: ",
+            await provider.connection.getBalance(wallet.publicKey)
+        );
+        const [ixs, signers] = await client.createMarketIx(
+            wallet.publicKey,
+            "BLAH-BLAH2",
+            new PublicKey(baseToken),
+            new PublicKey(quoteToken),
+            new BN(1),
+            new BN(1000000),
+            new BN(1000),
+            new BN(1000),
+            new BN(0),
+            null,
+            null,
+            null,
+            null,
+            null
+        )
+        console.log("ixs: ", ixs)
+        console.log("signers: ", signers)
+        // const tx = await client.sendAndConfirmTransaction(ixs, {
+        //     additionalSigners: signers,
+        // })
+        // console.log("created market", tx);
+        // console.log(
+        //     "finished with balance: ",
+        //     await connection.getBalance(wallet.publicKey)
+        // );
     }
     return (
         <div>
@@ -153,6 +202,7 @@ const CreateMarket = () => {
             </div>
         </div>
     )
+
 }
 
 export default CreateMarket

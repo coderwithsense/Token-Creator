@@ -38,7 +38,9 @@ const CreatePool = () => {
         })
     }
   return (
-    <div>CreatePool</div>
+    <div>
+      <button onClick={onClick}>Create Pool</button>
+    </div>
   )
 }
 
