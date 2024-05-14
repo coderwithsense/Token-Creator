@@ -79,6 +79,7 @@ const CreateMarket = () => {
             // })
             const transaction = new Transaction().add(...ixs);
             const tx = sendTransaction(transaction, connection);
+            notify({ message: `Market Created: ${tx}`, type: 'success' })
             console.log("created market", tx);
             console.log(
                 "finished with balance: ",
