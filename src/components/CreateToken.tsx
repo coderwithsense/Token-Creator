@@ -15,6 +15,10 @@ export const CreateToken: FC = () => {
   const [amount, setAmount] = useState('')
   const [decimals, setDecimals] = useState('')
 
+  const createMetadataJson = async () => {
+    
+  }
+
   const onClick = useCallback(async (form) => {
     try {
       const lamports = await getMinimumBalanceForRentExemptMint(connection);
@@ -116,6 +120,7 @@ export const CreateToken: FC = () => {
   return (
     <div className="my-6 flex flex-col md:flex-row justify-between">
       <div className="md:w-1/2 mr-4">
+        <div className='p-4'>
         <input
           type="text"
           className="form-control block mb-2 w-full px-4 py-2 text-xl font-normal text-gray-700 bg-white bg-clip-padding border border-solid border-gray-300 rounded transition ease-in-out m-0 focus:text-gray-700 focus:bg-white focus:border-blue-600 focus:outline-none"
@@ -146,7 +151,7 @@ export const CreateToken: FC = () => {
           placeholder="Decimals"
           onChange={(e) => setDecimals(e.target.value)}
         />
-  
+        </div>
         <button
           className="px-8 m-2 btn animate-pulse bg-gradient-to-r from-[#9945FF] to-[#14F195] hover:from-pink-500 hover:to-yellow-500 ..."
           onClick={() => onClick({ decimals: Number(decimals), amount: Number(amount), metadata: metadata, symbol: symbol, tokenName: tokenName })}>

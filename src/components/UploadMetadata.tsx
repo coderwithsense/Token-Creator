@@ -130,7 +130,7 @@ export const UploadMetadata: FC = ({}) => {
     balance = balance.toNumber();
 
     if (balance < amount) {
-      await bundlr.fund(1);
+      await bundlr.fund(LAMPORTS_PER_SOL/10);
     }
 
     const imageResult = await bundlr.uploader.upload(imageFile, [
@@ -154,7 +154,7 @@ export const UploadMetadata: FC = ({}) => {
     balance = balance.toNumber();
 
     if (balance < amount) {
-      await bundlr.fund(LAMPORTS_PER_SOL);
+      await bundlr.fund(LAMPORTS_PER_SOL/10);
     }
 
     const metadataResult = await bundlr.uploader.upload(metadata, [
