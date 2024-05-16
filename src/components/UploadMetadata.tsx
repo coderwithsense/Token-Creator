@@ -49,6 +49,7 @@ export const UploadMetadata: FC = ({}) => {
   const initializeBundlr = async () => {
     // initialise a bundlr client
     let bundler;
+    console.log(selected, "selected")
     if (selected.name === 'https://devnet.bundlr.network') {
       bundler = new WebBundlr(
         `${selected.name}`,

@@ -2,7 +2,7 @@
 //     "name": "Roaring Kitty",
 //     "symbol": "KITTY",
 //     "description": "Roaring Kitty | $KITTY\n\nTHERE'S NO BETTER CAT THAN ROARING MFKING KITTY",
-//     "image": "https://imgur.com/a/fwwscDN",
+//     "image": "",
 //     "extensions": {
 //     "website": "",
 //     "twitter": "https://twitter.com/Roaring___Kitty",
