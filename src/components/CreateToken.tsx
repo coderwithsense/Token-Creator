@@ -36,12 +36,12 @@ export const CreateToken: FC = () => {
     { id: 2, network: "devnet", name: "https://devnet.bundlr.network" },
   ];
   const [metadataJson, setmetadataJson] = useState({
-    Name: "",
-    Symbol: "",
-    amount: 1,
-    decimals: 1,
+    name: "",
+    symbol: "",
     description: "",
-    imageUrl: "",
+    image: "",
+    amount: 1000000,
+    decimals: 9,
   });
   const [socialsMeta, setsocialsMeta] = useState({
     website: "",
@@ -67,14 +67,14 @@ export const CreateToken: FC = () => {
     const arweaveImageUrl = `https://arweave.net/${imageResult.data.id}?ext=png`;
 
     if (arweaveImageUrl) {
-      setmetadataJson((prevState) => ({ ...prevState, imageUrl: arweaveImageUrl }));
+      setmetadataJson((prevState) => ({ ...prevState, image: arweaveImageUrl }));
     }
   };
 
   const uploadMetadata = async () => {
     let localmeta;
     if (isSocialsEnabled) {
-      localmeta = { ...metadataJson, ...socialsMeta };
+      localmeta = { ...metadataJson, extensions: {"website": socialsMeta.website, "telegram": socialsMeta.telegram, "twitter": socialsMeta.twitter, "discord": socialsMeta.discord} };
     } else {
       localmeta = metadataJson;
     }
@@ -252,7 +252,7 @@ export const CreateToken: FC = () => {
               type='text'
               placeholder='Put the name of your token'
               className='input input-bordered w-full md:w-[30vw]'
-              onChange={(e) => setmetadataJson((prevState) => ({ ...prevState, Name: e.target.value }))}
+              onChange={(e) => setmetadataJson((prevState) => ({ ...prevState, name: e.target.value }))}
             />
           </div>
           <div className='indicator'>
@@ -261,14 +261,14 @@ export const CreateToken: FC = () => {
               type='text'
               placeholder='Put the symbol of your token'
               className='input input-bordered w-full md:w-[30vw]'
-              onChange={(e) => setmetadataJson((prevState) => ({ ...prevState, Symbol: e.target.value }))}
+              onChange={(e) => setmetadataJson((prevState) => ({ ...prevState, symbol: e.target.value }))}
             />
           </div>
           <div className='indicator'>
             <span className='indicator-item badge'>Decimals</span>
             <input
               type='number'
-              placeholder='Eg: 0.000001'
+              placeholder='Eg: 9'
               className='input input-borderedw-full md:w-[30vw]'
               onChange={(e) => setmetadataJson((prevState) => ({ ...prevState, decimals: Number(e.target.value) }))}
             />
@@ -277,7 +277,7 @@ export const CreateToken: FC = () => {
             <span className='indicator-item badge'>Supply</span>
             <input
               type='number'
-              placeholder='Eg: 1'
+              placeholder='Eg: 1000000'
               className='input input-bordered w-full md:w-[30vw]'
               onChange={(e) => setmetadataJson((prevState) => ({ ...prevState, amount: Number(e.target.value) }))}
             />
@@ -286,7 +286,7 @@ export const CreateToken: FC = () => {
             <div>
               <span className='indicator-item indicator-top indicator-start badge'>Image</span>
               <div className='mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-1'>
-                {!metadataJson.imageUrl ? (
+                {!metadataJson.image ? (
                   <div className='mt-1 sm:mt-0 sm:col-span-1'>
                     <div className='max-w-[14rem] md:max-w-[32rem] flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md'>
                       <div className='space-y-1 text-center'>
@@ -326,8 +326,8 @@ export const CreateToken: FC = () => {
                 <button
                   className='px-8 m-2 btn animate-pulse bg-gradient-to-r from-[#9945FF] to-[#14F195] hover:from-pink-500 hover:to-yellow-500 ...'
                   onClick={async () => uploadImage()}
-                  disabled={!bundlr || metadataJson.imageUrl != ""}>
-                  {metadataJson.imageUrl ? "Uploaded Image" : "Upload Image"}
+                  disabled={!bundlr || metadataJson.image != ""}>
+                  {metadataJson.image ? "Uploaded Image" : "Upload Image"}
                 </button>
               </div>
             </div>
@@ -413,8 +413,8 @@ export const CreateToken: FC = () => {
                 decimals: metadataJson.decimals,
                 amount: metadataJson.amount,
                 metadata: metadata,
-                symbol: metadataJson.Symbol,
-                tokenName: metadataJson.Name,
+                symbol: metadataJson.symbol,
+                tokenName: metadataJson.name,
               });
             }}>
             Create

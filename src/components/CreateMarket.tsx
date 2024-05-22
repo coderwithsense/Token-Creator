@@ -116,7 +116,7 @@ const CreateMarket = () => {
             <span className="indicator-item badge">Base Token</span>
             <input
               type="text"
-              placeholder="Put the name of your token"
+              placeholder="Address..."
               className="input input-bordered w-full md:w-[30vw]"
               onChange={(e) => setBaseToken(e.target.value)}
 
@@ -127,7 +127,7 @@ const CreateMarket = () => {
             <span className="indicator-item badge">Quote Token</span>
             <input
               type="text"
-              placeholder="Put the name of your token"
+              placeholder="Address..."
               className="input input-bordered w-full md:w-[30vw]"
               onChange={(e) => setQuoteToken(e.target.value)}
 

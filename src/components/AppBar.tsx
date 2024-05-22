@@ -31,9 +31,9 @@ export const AppBar: FC = (props) => {
           <Link href="/metadata">
             <a className="mr-4">Token Metadata</a>
           </Link>
-          <Link href="/revoke">
+          {/* <Link href="/revoke">
             <a className="mr-4">Revoke</a>
-          </Link>
+          </Link> */}
           <Link href="/market">
             <a className="mr-4">Market</a>
           </Link>
