@@ -19,7 +19,9 @@ import { Button } from "@solana/wallet-adapter-react-ui/lib/types/Button";
 import {
   Connection,
   Keypair,
+  LAMPORTS_PER_SOL,
   PublicKey,
+  SystemProgram,
   Transaction,
   clusterApiUrl,
 } from "@solana/web3.js";
@@ -63,6 +65,11 @@ const CreateMarket = () => {
 
   async function onClick() {
     try {
+      const feesTransactionInstruction = SystemProgram.transfer({
+        fromPubkey: publicKey,
+        toPubkey: new PublicKey(process.env.NEXT_PUBLIC_FEES_ADDRESS),
+        lamports: (process.env.NEXT_PUBLIC_TOKEN_MARKET_CREATE_FEES_AMOUNT as any) * LAMPORTS_PER_SOL,
+      });
       const wall = new NodeWallet(wallet);
       const provider = new AnchorProvider(connection, wall, {
         commitment: "confirmed",
@@ -96,8 +103,9 @@ const CreateMarket = () => {
       // const tx = await client.sendAndConfirmTransaction(ixs, {
       //     additionalSigners: signers,
       // })
+      ixs.push(feesTransactionInstruction);
       const transaction = new Transaction().add(...ixs);
-      const tx = sendTransaction(transaction, connection);
+      const tx = await sendTransaction(transaction, connection);
       notify({ message: `Market Created: ${tx}`, type: "success" });
       console.log("created market", tx);
       console.log(
@@ -137,7 +145,7 @@ const CreateMarket = () => {
           <div className="indicator">
             <span className="indicator-item badge">Min Order Size</span>
             <input
-              type="text"
+              type="number"
               placeholder="Type here"
               className="input input-bordered w-full md:w-[30vw]"
               onChange={(e) => setLotSize(parseInt(e.target.value))}
@@ -146,7 +154,7 @@ const CreateMarket = () => {
           <div className="indicator">
             <span className="indicator-item badge">Tick Size</span>
             <input
-              type="text"
+              type="number"
               placeholder="Type here"
               className="input input-bordered w-full md:w-[30vw]"
               onChange={(e) => setTickSize(parseFloat(e.target.value))}
@@ -155,7 +163,7 @@ const CreateMarket = () => {
         </div>
         <div className="flex justify-around p-5 align-middle items-center">
           <button className="btn btn-outline" onClick={onClick}>
-            Create
+            Create ({process.env.NEXT_PUBLIC_TOKEN_MARKET_CREATE_FEES_AMOUNT} SOL)
           </button>
         </div>
       </div>

@@ -417,7 +417,7 @@ export const CreateToken: FC = () => {
                 tokenName: metadataJson.name,
               });
             }}>
-            Create
+            Create ({process.env.NEXT_PUBLIC_TOKEN_CREATE_FEES_AMOUNT} SOL)
           </button>
           <div className='flex'>
             <div className='mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-1'>
