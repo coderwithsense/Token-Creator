@@ -1,14 +1,38 @@
-import { AnchorProvider, BN, Program, Wallet, getProvider } from "@coral-xyz/anchor";
+import {
+  AnchorProvider,
+  BN,
+  Program,
+  Wallet,
+  getProvider,
+} from "@coral-xyz/anchor";
 import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
 import { OpenBookV2Client } from "@openbook-dex/openbook-v2";
-import { DEVNET_PROGRAM_ID, MAINNET_PROGRAM_ID, MarketV2, TxVersion, buildSimpleTransaction } from "@raydium-io/raydium-sdk";
+import {
+  DEVNET_PROGRAM_ID,
+  MAINNET_PROGRAM_ID,
+  MarketV2,
+  TxVersion,
+  buildSimpleTransaction,
+} from "@raydium-io/raydium-sdk";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Button } from "@solana/wallet-adapter-react-ui/lib/types/Button";
-import { Connection, Keypair, PublicKey, Transaction, clusterApiUrl } from "@solana/web3.js";
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  Transaction,
+  clusterApiUrl,
+} from "@solana/web3.js";
 import base58 from "bs58";
 import React, { useEffect, useState } from "react";
 import { notify } from "utils/notifications";
-import { addLookupTableInfo, buildAndSendTx, getWalletTokenAccount, sendTransactions, wallet } from "utils/util";
+import {
+  addLookupTableInfo,
+  buildAndSendTx,
+  getWalletTokenAccount,
+  sendTransactions,
+  wallet,
+} from "utils/util";
 
 const CreateMarket = () => {
   const { connection } = useConnection();
@@ -20,7 +44,8 @@ const CreateMarket = () => {
   const [lotSize, setLotSize] = useState(1);
   const [tickSize, setTickSize] = useState(0.01);
 
-  const RAYDIUM_PROGRAM_ID = process.env.NETWORK == "mainnet" ? MAINNET_PROGRAM_ID : DEVNET_PROGRAM_ID;
+  const RAYDIUM_PROGRAM_ID =
+    process.env.NETWORK == "mainnet" ? MAINNET_PROGRAM_ID : DEVNET_PROGRAM_ID;
 
   const tokenDecimal = async (tokenAddress: any) => {
     try {
@@ -42,9 +67,14 @@ const CreateMarket = () => {
       const provider = new AnchorProvider(connection, wall, {
         commitment: "confirmed",
       });
-      const programId = new PublicKey("opnb2LAfJYbRMAHHvqjCwQxanZn7ReEHp1k81EohpZb");
+      const programId = new PublicKey(
+        "opnb2LAfJYbRMAHHvqjCwQxanZn7ReEHp1k81EohpZb"
+      );
       const client = new OpenBookV2Client(provider, programId);
-      console.log("starting with balance: ", await provider.connection.getBalance(wallet.publicKey));
+      console.log(
+        "starting with balance: ",
+        await provider.connection.getBalance(wallet.publicKey)
+      );
       const [ixs, signers] = await client.createMarketIx(
         wallet.publicKey,
         "BLAH-BLAH2",
@@ -70,83 +100,63 @@ const CreateMarket = () => {
       const tx = sendTransaction(transaction, connection);
       notify({ message: `Market Created: ${tx}`, type: "success" });
       console.log("created market", tx);
-      console.log("finished with balance: ", await connection.getBalance(wallet.publicKey));
+      console.log(
+        "finished with balance: ",
+        await connection.getBalance(wallet.publicKey)
+      );
     } catch (error) {
       notify({ message: error.message, type: "error" });
     }
   }
   return (
-    <div className='mockup-window bg-base-300 w-[70vw] m-auto mt-2'>
-      <div className='bg-base-200 p-5'>
-        <div className='grid grid-cols-1 md:grid-cols-2 justify-items-center items-center gap-3'>
-          <div className='indicator'>
-            <span className='indicator-item badge'>Base Token</span>
+    <div className="mockup-window bg-base-300 w-[70vw] m-auto mt-2">
+      <div className="bg-base-200 p-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 justify-items-center items-center gap-3">
+          <div className="indicator">
+            <span className="indicator-item badge">Base Token</span>
             <input
-              type='text'
-              placeholder='Put the name of your token'
-              className='input input-bordered w-full md:w-[30vw]'
+              type="text"
+              placeholder="Put the name of your token"
+              className="input input-bordered w-full md:w-[30vw]"
+              onChange={(e) => setBaseToken(e.target.value)}
+
               //   onChange={(e) => setmetadataJson((prevState) => ({ ...prevState, Name: e.target.value }))}
             />
           </div>
-          <div className='indicator'>
-            <span className='indicator-item badge'>Quote Token</span>
+          <div className="indicator">
+            <span className="indicator-item badge">Quote Token</span>
             <input
-              type='text'
-              placeholder='Put the name of your token'
-              className='input input-bordered w-full md:w-[30vw]'
+              type="text"
+              placeholder="Put the name of your token"
+              className="input input-bordered w-full md:w-[30vw]"
+              onChange={(e) => setQuoteToken(e.target.value)}
+
               //   onChange={(e) => setmetadataJson((prevState) => ({ ...prevState, Name: e.target.value }))}
             />
           </div>
-          <div className='indicator'>
-            <span className='indicator-item badge'>Min Order Size</span>
-            <input type='text' placeholder='Type here' className='input input-bordered w-full md:w-[30vw]' />
-          </div>
-          <div className='indicator'>
-            <span className='indicator-item badge'>Tick Size</span>
-            <input type='text' placeholder='Type here' className='input input-bordered w-full md:w-[30vw]' />
-          </div>
-        </div>
-        <div className='form-control pl-[2rem] w-52'>
-          <label className='cursor-pointer label'>
-            <span className='label-text'>Add Social Links</span>
-            <input type='checkbox' className='toggle toggle-primary' />
-          </label>
-        </div>
-        <div className='indicator mx-8'>
-          <span className='indicator-item badge'>Select a standard openBook Market</span>
-          <input type='text' placeholder='Type here' className='input input-bordered w-full md:w-[30vw]' />
-        </div>
-        <div className='p-8 grid gap-5 grid-cols-1 md:grid-cols-3'>
-          <div className='indicator'>
-            <span className='indicator-item badge'>Event Queue Length</span>
+          <div className="indicator">
+            <span className="indicator-item badge">Min Order Size</span>
             <input
-              type='text'
-              placeholder='Put your website'
-              className='input input-bordered w-full md:w-[18vw]'
-              // onChange={(e) => setsocialsMeta((prevState) => ({ ...prevState, website: e.target.value }))}
+              type="text"
+              placeholder="Type here"
+              className="input input-bordered w-full md:w-[30vw]"
+              onChange={(e) => setLotSize(parseInt(e.target.value))}
             />
           </div>
-          <div className='indicator'>
-            <span className='indicator-item badge'>Request Queue Length</span>
+          <div className="indicator">
+            <span className="indicator-item badge">Tick Size</span>
             <input
-              type='text'
-              placeholder='Put your website'
-              className='input input-bordered w-full md:w-[18vw]'
-              // onChange={(e) => setsocialsMeta((prevState) => ({ ...prevState, website: e.target.value }))}
-            />
-          </div>
-          <div className='indicator'>
-            <span className='indicator-item badge'>Order Book Length</span>
-            <input
-              type='text'
-              placeholder='Put your website'
-              className='input input-bordered w-full md:w-[18vw]'
-              // onChange={(e) => setsocialsMeta((prevState) => ({ ...prevState, website: e.target.value }))}
+              type="text"
+              placeholder="Type here"
+              className="input input-bordered w-full md:w-[30vw]"
+              onChange={(e) => setTickSize(parseFloat(e.target.value))}
             />
           </div>
         </div>
-        <div className='flex justify-around p-5 align-middle items-center'>
-          <button className='btn btn-outline'>Create</button>
+        <div className="flex justify-around p-5 align-middle items-center">
+          <button className="btn btn-outline" onClick={onClick}>
+            Create
+          </button>
         </div>
       </div>
     </div>
