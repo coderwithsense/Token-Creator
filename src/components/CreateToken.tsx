@@ -1,6 +1,9 @@
-import { FC, useCallback, useEffect, useState } from "react";
+import { FC, useCallback, Fragment, useEffect, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Keypair, PublicKey, SystemProgram, Transaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { Listbox, Transition } from "@headlessui/react";
+import { CheckIcon, SelectorIcon } from "@heroicons/react/solid";
+
 import {
   MINT_SIZE,
   TOKEN_PROGRAM_ID,
@@ -13,23 +16,25 @@ import {
 import { createCreateMetadataAccountV3Instruction, PROGRAM_ID } from "@metaplex-foundation/mpl-token-metadata";
 import { notify } from "utils/notifications";
 import { WebBundlr } from "@bundlr-network/client";
-
+const classNames = (...classes) => {
+  return classes.filter(Boolean).join(" ");
+};
 export const CreateToken: FC = () => {
   const wallet = useWallet();
   const { connection } = useConnection();
   const { publicKey, sendTransaction } = useWallet();
-  const [tokenName, setTokenName] = useState("");
-  const [symbol, setSymbol] = useState("");
-
   const [logo, setLogo] = useState("");
-  const [amount, setAmount] = useState("");
-  const [decimals, setDecimals] = useState("");
   const [isSocialsEnabled, setisSocialsEnabled] = useState(false);
   const [metaUri, setmetaUri] = useState("1");
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [bundlr, setBundlr] = useState(null);
   const [provider, setProvider] = useState(null);
+  const [selected, setSelected] = useState(null);
+  const bundlers = [
+    { id: 1, network: "mainnet-beta", name: "https://node1.bundlr.network" },
+    { id: 2, network: "devnet", name: "https://devnet.bundlr.network" },
+  ];
   const [metadataJson, setmetadataJson] = useState({
     Name: "",
     Symbol: "",
@@ -69,10 +74,10 @@ export const CreateToken: FC = () => {
   const uploadMetadata = async () => {
     let localmeta;
     if (isSocialsEnabled) {
-      localmeta = {...metadataJson, ...socialsMeta}
+      localmeta = { ...metadataJson, ...socialsMeta };
     } else {
-      localmeta = metadataJson
-    } 
+      localmeta = metadataJson;
+    }
     const price = await bundlr.utils.getPrice("solana", JSON.stringify(localmeta).length);
     let amount = bundlr.utils.unitConverter(price);
     amount = amount.toNumber();
@@ -85,9 +90,7 @@ export const CreateToken: FC = () => {
       await bundlr.fund(LAMPORTS_PER_SOL / 10);
     }
 
-    const metadataResult = await bundlr.uploader.upload(JSON.stringify(localmeta), [
-      { name: "Content-Type", value: "application/json" },
-    ]);
+    const metadataResult = await bundlr.uploader.upload(JSON.stringify(localmeta), [{ name: "Content-Type", value: "application/json" }]);
     const arweaveMetadataUrl = `https://arweave.net/${metadataResult.data.id}`;
     setmetaUri(arweaveMetadataUrl);
     return arweaveMetadataUrl;
@@ -119,40 +122,43 @@ export const CreateToken: FC = () => {
     }
   });
 
-  useEffect(() => {
-    const initializeBundlr = async () => {
-      // initialise a bundlr client
-      let bundler = new WebBundlr(`https://devnet.bundlr.network`, "solana", provider, { providerUrl: "https://api.devnet.solana.com" });
+  const initializeBundlr = async () => {
+    // initialise a bundlr client
+    let bundler;
+    console.log(selected, "selected");
+    if (selected.name === "https://devnet.bundlr.network") {
+      bundler = new WebBundlr(`${selected.name}`, "solana", provider, { providerUrl: "https://api.devnet.solana.com" });
+    } else {
+      bundler = new WebBundlr(`${selected.name}`, "solana", provider);
+    }
 
-      console.log(bundler);
+    console.log(bundler);
 
-      try {
-        // Check for valid bundlr node
-        await bundler.utils.getBundlerAddress("solana");
-      } catch (err) {
-        notify({ type: "error", message: `${err}` });
-        return;
-      }
-      try {
-        await bundler.ready();
-      } catch (err) {
-        notify({ type: "error", message: `${err}` });
-        return;
-      } //@ts-ignore
-      if (!bundler.address) {
-        notify({
-          type: "error",
-          message: "Unexpected error: bundlr address not found",
-        });
-      }
+    try {
+      // Check for valid bundlr node
+      await bundler.utils.getBundlerAddress("solana");
+    } catch (err) {
+      notify({ type: "error", message: `${err}` });
+      return;
+    }
+    try {
+      await bundler.ready();
+    } catch (err) {
+      notify({ type: "error", message: `${err}` });
+      return;
+    } //@ts-ignore
+    if (!bundler.address) {
       notify({
-        type: "success",
-        message: `Connected to Devnet`,
+        type: "error",
+        message: "Unexpected error: bundlr address not found",
       });
-      setBundlr(bundler);
-    };
-    initializeBundlr();
-  }, [provider]);
+    }
+    notify({
+      type: "success",
+      message: `Connected to ${selected.network}`,
+    });
+    setBundlr(bundler);
+  };
 
   const onClick = useCallback(
     async (form) => {
@@ -311,24 +317,18 @@ export const CreateToken: FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className='px-4 py-5 bg-white space-y-6 sm:p-6'>
-                    <a href={metadataJson.imageUrl} target='_blank' rel='noreferrer'>
-                      {metadataJson.imageUrl}
-                    </a>
-                  </div>
+                  <div></div>
                 )}
               </div>
             </div>
             <div className='mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-1'>
               <div className='px-4 py-5 space-y-6 sm:p-6'>
-                {!metadataJson.imageUrl && (
-                  <button
-                    className='px-8 m-2 btn animate-pulse bg-gradient-to-r from-[#9945FF] to-[#14F195] hover:from-pink-500 hover:to-yellow-500 ...'
-                    onClick={async () => uploadImage()}
-                    disabled={!bundlr}>
-                    Upload Image
-                  </button>
-                )}
+                <button
+                  className='px-8 m-2 btn animate-pulse bg-gradient-to-r from-[#9945FF] to-[#14F195] hover:from-pink-500 hover:to-yellow-500 ...'
+                  onClick={async () => uploadImage()}
+                  disabled={!bundlr || metadataJson.imageUrl != ""}>
+                  {metadataJson.imageUrl ? "Uploaded Image" : "Upload Image"}
+                </button>
               </div>
             </div>
           </div>
@@ -403,8 +403,9 @@ export const CreateToken: FC = () => {
             </div>
           </div>
         </div>
-        <div className='flex justify-center p-5'>
+        <div className='flex justify-around p-5 align-middle items-center'>
           <button
+            disabled={!bundlr}
             className='btn btn-outline'
             onClick={async () => {
               const metadata = await uploadMetadata();
@@ -418,6 +419,69 @@ export const CreateToken: FC = () => {
             }}>
             Create
           </button>
+          <div className='flex'>
+            <div className='mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-1'>
+              <div className='px-4 py-5'>
+                <Listbox value={selected} onChange={setSelected}>
+                  {() => (
+                    <>
+                      <div className='mt-1 relative'>
+                        <Listbox.Button className='bg-white relative w-full border border-gray-300 rounded-md shadow-sm pl-3 pr-10 py-2 text-left cursor-default focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'>
+                          <span className='block truncate'>{!selected ? "Select Network" : selected.network}</span>
+                          <span className='absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none'>
+                            <SelectorIcon className='h-5 w-5 text-gray-400' aria-hidden='true' />
+                          </span>
+                        </Listbox.Button>
+
+                        <Transition as={Fragment} leave='transition ease-in duration-100' leaveFrom='opacity-100' leaveTo='opacity-0'>
+                          <Listbox.Options className='absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm'>
+                            {bundlers.map((bundler) => (
+                              <Listbox.Option
+                                key={bundler.id}
+                                className={({ active }) =>
+                                  classNames(
+                                    active ? "text-white bg-purple-500" : "text-gray-900",
+                                    "cursor-default select-none relative py-2 pl-3 pr-9"
+                                  )
+                                }
+                                value={bundler}>
+                                {({ selected, active }) => (
+                                  <>
+                                    <span className={classNames(selected ? "font-semibold" : "font-normal", "block truncate")}>
+                                      {bundler.network}
+                                    </span>
+
+                                    {selected ? (
+                                      <span
+                                        className={classNames(
+                                          active ? "text-white" : "text-purple-500",
+                                          "absolute inset-y-0 right-0 flex items-center pr-4"
+                                        )}>
+                                        <CheckIcon className='h-5 w-5' aria-hidden='true' />
+                                      </span>
+                                    ) : null}
+                                  </>
+                                )}
+                              </Listbox.Option>
+                            ))}
+                          </Listbox.Options>
+                        </Transition>
+                      </div>
+                    </>
+                  )}
+                </Listbox>
+              </div>
+            </div>
+            <div className='mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-1'>
+              <div className='px-4 py-5'>
+                <button
+                  className='items-center px-3 py-2 text-xs btn animate-pulse bg-gradient-to-r from-[#9945FF] to-[#14F195] hover:from-pink-500 hover:to-yellow-500 ...'
+                  onClick={async () => await initializeBundlr()}>
+                  Connect
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
