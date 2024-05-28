@@ -6,3 +6,11 @@ https://github.com/solana-labs/solana-program-library/blob/d72289c79/token/js/sr
 
 https://github.com/raydium-io/raydium-sdk-V1-demo/blob/master/src/utilsCreateMarket.ts
 
+try this: https://github.com/raydium-io/raydium-sdk-V2-demo/blob/master/src/amm/createMarket.ts (config: https://github.com/raydium-io/raydium-sdk-V2-demo/blob/master/src/config.ts.template)
+
+REAL TODO:
+- freeze authority for token by default
+- use https://github.com/TheDeFiQuant/OBex, add market id adder
+
+TODO:
+https://vscode.dev/github/coderwithsense/Token-Creator/blob/master/src/components/CreateToken.tsx#L35-L36

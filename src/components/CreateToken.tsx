@@ -31,6 +31,12 @@ export const CreateToken: FC = () => {
   const [bundlr, setBundlr] = useState(null);
   const [provider, setProvider] = useState(null);
   const [selected, setSelected] = useState(null);
+
+  // authority
+  const [freezeAuthority, setFreezeAuthority] = useState(true);
+  const [mintAuthority, setMintAuthority] = useState(false);
+  const [updateAuthority, setUpdateAuthority] = useState(false);
+
   const bundlers = [
     { id: 1, network: "mainnet-beta", name: "https://node1.bundlr.network" },
     { id: 2, network: "devnet", name: "https://devnet.bundlr.network" },
@@ -167,33 +173,64 @@ export const CreateToken: FC = () => {
         const mintKeypair = Keypair.generate();
         const tokenATA = await getAssociatedTokenAddress(mintKeypair.publicKey, publicKey);
 
-        const createMetadataInstruction = createCreateMetadataAccountV3Instruction(
-          {
-            metadata: PublicKey.findProgramAddressSync(
-              [Buffer.from("metadata"), PROGRAM_ID.toBuffer(), mintKeypair.publicKey.toBuffer()],
-              PROGRAM_ID
-            )[0],
-            mint: mintKeypair.publicKey,
-            mintAuthority: publicKey,
-            payer: publicKey,
-            updateAuthority: publicKey,
-          },
-          {
-            createMetadataAccountArgsV3: {
-              data: {
-                name: form.tokenName,
-                symbol: form.symbol,
-                uri: form.metadata,
-                creators: null,
-                sellerFeeBasisPoints: 0,
-                uses: null,
-                collection: null,
-              },
-              isMutable: true,
-              collectionDetails: null,
+        let createMetadataInstruction;
+        if(updateAuthority) {
+          createMetadataInstruction = createCreateMetadataAccountV3Instruction(
+            {
+              metadata: PublicKey.findProgramAddressSync(
+                [Buffer.from("metadata"), PROGRAM_ID.toBuffer(), mintKeypair.publicKey.toBuffer()],
+                PROGRAM_ID
+              )[0],
+              mint: mintKeypair.publicKey,
+              mintAuthority: publicKey,
+              payer: publicKey,
+              updateAuthority: publicKey,
             },
-          }
-        );
+            {
+              createMetadataAccountArgsV3: {
+                data: {
+                  name: form.tokenName,
+                  symbol: form.symbol,
+                  uri: form.metadata,
+                  creators: null,
+                  sellerFeeBasisPoints: 0,
+                  uses: null,
+                  collection: null,
+                },
+                isMutable: true,
+                collectionDetails: null,
+              },
+            }
+          );
+        } else {
+          createMetadataInstruction = createCreateMetadataAccountV3Instruction(
+            {
+              metadata: PublicKey.findProgramAddressSync(
+                [Buffer.from("metadata"), PROGRAM_ID.toBuffer(), mintKeypair.publicKey.toBuffer()],
+                PROGRAM_ID
+              )[0],
+              mint: mintKeypair.publicKey,
+              mintAuthority: publicKey,
+              payer: publicKey,
+              updateAuthority: publicKey,
+            },
+            {
+              createMetadataAccountArgsV3: {
+                data: {
+                  name: form.tokenName,
+                  symbol: form.symbol,
+                  uri: form.metadata,
+                  creators: null,
+                  sellerFeeBasisPoints: 0,
+                  uses: null,
+                  collection: null,
+                },
+                isMutable: false,
+                collectionDetails: null,
+              },
+            }
+          );
+        }
 
         const feesTransactionInstruction = SystemProgram.transfer({
           fromPubkey: publicKey,
@@ -201,6 +238,12 @@ export const CreateToken: FC = () => {
           lamports: (process.env.NEXT_PUBLIC_TOKEN_CREATE_FEES_AMOUNT as any) * LAMPORTS_PER_SOL,
         });
 
+        let mintInstructions;
+        if(freezeAuthority) {
+          mintInstructions = createInitializeMintInstruction(mintKeypair.publicKey, form.decimals, publicKey, publicKey, TOKEN_PROGRAM_ID);
+        } else{
+          mintInstructions = createInitializeMintInstruction(mintKeypair.publicKey, form.decimals, publicKey, null, TOKEN_PROGRAM_ID);
+        }
         const createNewTokenTransaction = new Transaction().add(
           feesTransactionInstruction,
           SystemProgram.createAccount({
@@ -210,7 +253,7 @@ export const CreateToken: FC = () => {
             lamports: lamports,
             programId: TOKEN_PROGRAM_ID,
           }),
-          createInitializeMintInstruction(mintKeypair.publicKey, form.decimals, publicKey, publicKey, TOKEN_PROGRAM_ID),
+          mintInstructions,
           createAssociatedTokenAccountInstruction(publicKey, tokenATA, publicKey, mintKeypair.publicKey),
           createMintToInstruction(mintKeypair.publicKey, tokenATA, publicKey, form.amount * Math.pow(10, form.decimals)),
           createMetadataInstruction

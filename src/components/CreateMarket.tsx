@@ -63,59 +63,68 @@ const CreateMarket = () => {
     }
   };
 
-  async function onClick() {
+  // async function onClick() {
+  //   try {
+  //     const feesTransactionInstruction = SystemProgram.transfer({
+  //       fromPubkey: publicKey,
+  //       toPubkey: new PublicKey(process.env.NEXT_PUBLIC_FEES_ADDRESS),
+  //       lamports: (process.env.NEXT_PUBLIC_TOKEN_MARKET_CREATE_FEES_AMOUNT as any) * LAMPORTS_PER_SOL,
+  //     });
+  //     const wall = new NodeWallet(wallet);
+  //     const provider = new AnchorProvider(connection, wall, {
+  //       commitment: "confirmed",
+  //     });
+  //     const programId = new PublicKey(
+  //       "opnb2LAfJYbRMAHHvqjCwQxanZn7ReEHp1k81EohpZb"
+  //     );
+  //     const client = new OpenBookV2Client(provider, programId);
+  //     console.log(
+  //       "starting with balance: ",
+  //       await provider.connection.getBalance(wallet.publicKey)
+  //     );
+  //     const [ixs, signers] = await client.createMarketIx(
+  //       wallet.publicKey,
+  //       "BLAH-BLAH2",
+  //       new PublicKey(baseToken),
+  //       new PublicKey(quoteToken),
+  //       new BN(1),
+  //       new BN(1000000),
+  //       new BN(1000),
+  //       new BN(1000),
+  //       new BN(0),
+  //       null,
+  //       null,
+  //       null,
+  //       null,
+  //       null
+  //     );
+  //     console.log("ixs: ", ixs);
+  //     console.log("signers: ", signers);
+  //     // const tx = await client.sendAndConfirmTransaction(ixs, {
+  //     //     additionalSigners: signers,
+  //     // })
+  //     ixs.push(feesTransactionInstruction);
+  //     const transaction = new Transaction().add(...ixs);
+  //     const tx = await sendTransaction(transaction, connection);
+  //     notify({ message: `Market Created: ${tx}`, type: "success" });
+  //     console.log("created market", tx);
+  //     console.log(
+  //       "finished with balance: ",
+  //       await connection.getBalance(wallet.publicKey)
+  //     );
+  //   } catch (error) {
+  //     notify({ message: error.message, type: "error" });
+  //   }
+  // }
+
+  const onClick = async () => {
     try {
-      const feesTransactionInstruction = SystemProgram.transfer({
-        fromPubkey: publicKey,
-        toPubkey: new PublicKey(process.env.NEXT_PUBLIC_FEES_ADDRESS),
-        lamports: (process.env.NEXT_PUBLIC_TOKEN_MARKET_CREATE_FEES_AMOUNT as any) * LAMPORTS_PER_SOL,
-      });
-      const wall = new NodeWallet(wallet);
-      const provider = new AnchorProvider(connection, wall, {
-        commitment: "confirmed",
-      });
-      const programId = new PublicKey(
-        "opnb2LAfJYbRMAHHvqjCwQxanZn7ReEHp1k81EohpZb"
-      );
-      const client = new OpenBookV2Client(provider, programId);
-      console.log(
-        "starting with balance: ",
-        await provider.connection.getBalance(wallet.publicKey)
-      );
-      const [ixs, signers] = await client.createMarketIx(
-        wallet.publicKey,
-        "BLAH-BLAH2",
-        new PublicKey(baseToken),
-        new PublicKey(quoteToken),
-        new BN(1),
-        new BN(1000000),
-        new BN(1000),
-        new BN(1000),
-        new BN(0),
-        null,
-        null,
-        null,
-        null,
-        null
-      );
-      console.log("ixs: ", ixs);
-      console.log("signers: ", signers);
-      // const tx = await client.sendAndConfirmTransaction(ixs, {
-      //     additionalSigners: signers,
-      // })
-      ixs.push(feesTransactionInstruction);
-      const transaction = new Transaction().add(...ixs);
-      const tx = await sendTransaction(transaction, connection);
-      notify({ message: `Market Created: ${tx}`, type: "success" });
-      console.log("created market", tx);
-      console.log(
-        "finished with balance: ",
-        await connection.getBalance(wallet.publicKey)
-      );
-    } catch (error) {
-      notify({ message: error.message, type: "error" });
+      
+    } catch (e) {
+      notify({ message: e.message, type: "error" });
     }
   }
+
   return (
     <div className="mockup-window bg-base-300 w-[70vw] m-auto mt-2">
       <div className="bg-base-200 p-5">
@@ -127,8 +136,6 @@ const CreateMarket = () => {
               placeholder="Address..."
               className="input input-bordered w-full md:w-[30vw]"
               onChange={(e) => setBaseToken(e.target.value)}
-
-              //   onChange={(e) => setmetadataJson((prevState) => ({ ...prevState, Name: e.target.value }))}
             />
           </div>
           <div className="indicator">
@@ -138,8 +145,6 @@ const CreateMarket = () => {
               placeholder="Address..."
               className="input input-bordered w-full md:w-[30vw]"
               onChange={(e) => setQuoteToken(e.target.value)}
-
-              //   onChange={(e) => setmetadataJson((prevState) => ({ ...prevState, Name: e.target.value }))}
             />
           </div>
           <div className="indicator">
@@ -158,6 +163,17 @@ const CreateMarket = () => {
               placeholder="Type here"
               className="input input-bordered w-full md:w-[30vw]"
               onChange={(e) => setTickSize(parseFloat(e.target.value))}
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 justify-items-center items-center gap-3">
+        <div className="indicator">
+            <span className="indicator-item badge">Base Token</span>
+            <input
+              type="text"
+              placeholder="Address..."
+              className="input input-bordered w-full md:w-[30vw]"
+              onChange={(e) => setBaseToken(e.target.value)}
             />
           </div>
         </div>
