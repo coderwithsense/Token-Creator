@@ -33,7 +33,7 @@ export const CreateToken: FC = () => {
   const [selected, setSelected] = useState(null);
 
   // authority
-  const [freezeAuthority, setFreezeAuthority] = useState(true);
+  const [freezeAuthority, setFreezeAuthority] = useState(false);
   const [mintAuthority, setMintAuthority] = useState(false);
   const [updateAuthority, setUpdateAuthority] = useState(false);
 
