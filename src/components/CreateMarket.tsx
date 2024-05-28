@@ -126,7 +126,7 @@ const CreateMarket = () => {
   }
 
   return (
-    <div className="mockup-window bg-base-300 w-[70vw] m-auto mt-2">
+    <div className="mockup-window bg-base-300 w-[82vw] m-auto mt-2 md:w-[85vw]">
       <div className="bg-base-200 p-5">
         <div className="grid grid-cols-1 md:grid-cols-2 justify-items-center items-center gap-3">
           <div className="indicator">
@@ -166,14 +166,44 @@ const CreateMarket = () => {
             />
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 justify-items-center items-center gap-3">
-        <div className="indicator">
-            <span className="indicator-item badge">Base Token</span>
+        <div className="form-control pl-[6rem] w-[20%]">
+          <label className="cursor-pointer label">
+            <span className="label-text">Advance Options</span>
             <input
-              type="text"
-              placeholder="Address..."
-              className="input input-bordered w-full md:w-[30vw]"
-              onChange={(e) => setBaseToken(e.target.value)}
+              type="checkbox"
+              className="toggle toggle-primary"
+              // onChange={(e) => {
+              //   setisSocialsEnabled((prev) => !prev);
+              // }}
+            />
+          </label>
+        </div>
+        <div className="grid grid-cols-1 px-6 md:grid-cols-3 justify-items-center items-center gap-1">
+        <div className="indicator">
+            <span className="indicator-item badge">Event Queue Length</span>
+            <input
+              type="number"
+              placeholder="Type here"
+              className="input input-bordered w-full md:w-[19vw]"
+              onChange={(e) => setTickSize(parseFloat(e.target.value))}
+            />
+          </div>
+          <div className="indicator">
+            <span className="indicator-item badge">Request Length</span>
+            <input
+              type="number"
+              placeholder="Type here"
+              className="input input-bordered w-full md:w-[19vw]"
+              onChange={(e) => setTickSize(parseFloat(e.target.value))}
+            />
+          </div>
+          <div className="indicator">
+            <span className="indicator-item badge">Orderbook Length</span>
+            <input
+              type="number"
+              placeholder="Type here"
+              className="input input-bordered w-full md:w-[19vw]"
+              onChange={(e) => setTickSize(parseFloat(e.target.value))}
             />
           </div>
         </div>
@@ -184,7 +214,7 @@ const CreateMarket = () => {
         </div>
       </div>
     </div>
-    // <div>
+    //   <div>
     //     <div>
     //         <h1 className="text-center text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-tr from-[#9945FF] to-[#14F195] p-10">
     //             Create Market
