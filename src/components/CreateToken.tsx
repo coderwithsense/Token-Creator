@@ -589,7 +589,7 @@ export const CreateToken: FC = () => {
             <div className="p-5 grid gap-3 grid-cols-1 md:grid-cols-3">
               <div className="form-control">
                 <label className="label cursor-pointer">
-                  <span className="label-text">Revoke Authorities</span>
+                  <span className="label-text">Freeze Authority</span>
                   <input
                     onChange={(e) =>
                       setFreezeAuthority((prevState) => !prevState)
