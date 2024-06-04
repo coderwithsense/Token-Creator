@@ -1,5 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
-import { ClusterType } from "../context";
+import { ClusterType } from "contexts/ContextProvider";
+
 
 export function classNames(...classes: string[]): string {
   return classes.filter(Boolean).join(" ");

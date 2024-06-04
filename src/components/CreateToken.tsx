@@ -341,7 +341,7 @@ export const CreateToken: FC = () => {
         notify({ message: e.message, type: "error" });
       }
     },
-    [publicKey, connection, sendTransaction]
+    [publicKey, connection, sendTransaction, freezeAuthority, updateAuthority]
   );
 
   const fetchLogo = useCallback(async (metadataUrl) => {

@@ -2,10 +2,12 @@ import { useConnection } from "@solana/wallet-adapter-react";
 import { Connection, PublicKey } from "@solana/web3.js";
 import useSWR from "swr";
 import { useSerum } from "../context/SerumContext";
-import { ClusterType, useSolana } from "../context/SolanaContext";
+// import { ClusterType, useSolana } from "../context/SolanaContext";
+
 import { MARKET_ACCOUNT_FLAGS_B58_ENCODED } from "../utils/constants";
 import { toast } from "react-toastify";
 import { AccountTypes } from "../utils/typeChecks";
+import { useSolana, ClusterType } from "contexts/ContextProvider";
 
 export type SerumMarketInfo = {
   type: AccountTypes.SerumMarketInfo;
