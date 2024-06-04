@@ -1,4 +1,5 @@
-import { useSolana } from "../../../context";
+
+import { useSolana } from "contexts/ContextProvider";
 import { getExplorerLink } from "../../../utils/general";
 
 type TransactionSuccessProps = {
