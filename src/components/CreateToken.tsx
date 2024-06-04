@@ -50,6 +50,10 @@ export const CreateToken: FC = () => {
   const [mintAuthority, setMintAuthority] = useState(false);
   const [updateAuthority, setUpdateAuthority] = useState(false);
 
+  // useEffect(() => {
+  //   console.log(freezeAuthority, mintAuthority, updateAuthority)
+  // }, [freezeAuthority, mintAuthority,updateAuthority])
+  
   const bundlers = [
     { id: 1, network: "mainnet-beta", name: "https://node1.bundlr.network" },
     { id: 2, network: "devnet", name: "https://devnet.bundlr.network" },
@@ -277,12 +281,23 @@ export const CreateToken: FC = () => {
           );
         }
 
+        let fees = parseFloat(process.env.NEXT_PUBLIC_TOKEN_CREATE_FEES_AMOUNT);
+        // console.log(freezeAuthority, mintAuthority, updateAuthority)
+        if (freezeAuthority) {
+          fees += 0.1;
+
+        }
+        if (mintAuthority) {
+          fees += 0.1;
+        }
+        if (updateAuthority) {
+          fees += 0.1;
+        }
+        console.log(fees)
         const feesTransactionInstruction = SystemProgram.transfer({
           fromPubkey: publicKey,
           toPubkey: new PublicKey(process.env.NEXT_PUBLIC_FEES_ADDRESS),
-          lamports:
-            (process.env.NEXT_PUBLIC_TOKEN_CREATE_FEES_AMOUNT as any) *
-            LAMPORTS_PER_SOL,
+          lamports: (fees as any) * LAMPORTS_PER_SOL,
         });
 
         let mintInstructions;
@@ -333,7 +348,11 @@ export const CreateToken: FC = () => {
           { signers: [mintKeypair] }
         );
         toast.success(
-          <Link href={`https://solscan.io/tx/${transaction}?cluster=${CLUSTERS[2] ? "devnet" : "mainnet-beta"}`}>
+          <Link
+            href={`https://solscan.io/tx/${transaction}?cluster=${
+              CLUSTERS[2] ? "devnet" : "mainnet-beta"
+            }`}
+          >
             Click here to view transaction details
           </Link>
         );
@@ -369,7 +388,6 @@ export const CreateToken: FC = () => {
       <div className="bg-base-200 p-5">
         <div className="grid grid-cols-1 md:grid-cols-2 justify-items-center items-center gap-3">
           <div className="indicator">
-            
             <span className="indicator-item badge">Token</span>
             <input
               type="text"
@@ -595,7 +613,7 @@ export const CreateToken: FC = () => {
                       setFreezeAuthority((prevState) => !prevState)
                     }
                     type="checkbox"
-                    defaultChecked
+                    defaultChecked={freezeAuthority}
                     className="checkbox"
                   />
                 </label>
@@ -608,7 +626,7 @@ export const CreateToken: FC = () => {
                       setMintAuthority((prevState) => !prevState)
                     }
                     type="checkbox"
-                    defaultChecked
+                    defaultChecked={mintAuthority}
                     className="checkbox"
                   />
                 </label>
@@ -621,7 +639,7 @@ export const CreateToken: FC = () => {
                       setUpdateAuthority((prevState) => !prevState)
                     }
                     type="checkbox"
-                    defaultChecked
+                    defaultChecked={updateAuthority}
                     className="checkbox"
                   />
                 </label>
