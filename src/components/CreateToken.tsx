@@ -577,7 +577,7 @@ export const CreateToken: FC = () => {
         <div>
           <div className="mockup-code bg-primary text-primary-content">
             <div className="px-5">
-              <h1 className="font-semibold">Revoke Authorities</h1>
+              <h1 className="font-semibold">Freeze Authorities</h1>
               <div className="px-5">
                 <p className="font-extrathin">
                   Solana Token have 3 Authorities. Freeze Authority, Mint
