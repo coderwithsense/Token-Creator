@@ -7,6 +7,7 @@ import {
   Transaction,
   LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
+import { ToastContainer } from "react-toastify";
 import { Listbox, Transition } from "@headlessui/react";
 import { CheckIcon, SelectorIcon } from "@heroicons/react/solid";
 
@@ -18,13 +19,16 @@ import {
   getAssociatedTokenAddress,
   createAssociatedTokenAccountInstruction,
   createMintToInstruction,
-} from "@solana/spl-token";
+} from "@solana/spl-token-2";
 import {
   createCreateMetadataAccountV3Instruction,
   PROGRAM_ID,
 } from "@metaplex-foundation/mpl-token-metadata";
 import { notify } from "utils/notifications";
 import { WebBundlr } from "@bundlr-network/client";
+import Link from "next/link";
+import { CLUSTERS } from "contexts/ContextProvider";
+import toast, { Toaster } from "react-hot-toast";
 const classNames = (...classes) => {
   return classes.filter(Boolean).join(" ");
 };
@@ -328,10 +332,11 @@ export const CreateToken: FC = () => {
           connection,
           { signers: [mintKeypair] }
         );
-        notify({
-          message: "Token created: " + transaction + " ",
-          type: "success",
-        });
+        toast.success(
+          <Link href={`https://solscan.io/tx/${transaction}?cluster=${CLUSTERS[2] ? "devnet" : "mainnet-beta"}`}>
+            Click here to view transaction details
+          </Link>
+        );
       } catch (e) {
         notify({ message: e.message, type: "error" });
       }
@@ -364,6 +369,7 @@ export const CreateToken: FC = () => {
       <div className="bg-base-200 p-5">
         <div className="grid grid-cols-1 md:grid-cols-2 justify-items-center items-center gap-3">
           <div className="indicator">
+            
             <span className="indicator-item badge">Token</span>
             <input
               type="text"
@@ -585,7 +591,9 @@ export const CreateToken: FC = () => {
                 <label className="label cursor-pointer">
                   <span className="label-text">Revoke Authorities</span>
                   <input
-                  onChange={(e) => setFreezeAuthority((prevState) => !prevState)}
+                    onChange={(e) =>
+                      setFreezeAuthority((prevState) => !prevState)
+                    }
                     type="checkbox"
                     defaultChecked
                     className="checkbox"
@@ -596,7 +604,9 @@ export const CreateToken: FC = () => {
                 <label className="label cursor-pointer">
                   <span className="label-text">Mint Authorities</span>
                   <input
-                  onChange={(e) => setMintAuthority((prevState) => !prevState)}
+                    onChange={(e) =>
+                      setMintAuthority((prevState) => !prevState)
+                    }
                     type="checkbox"
                     defaultChecked
                     className="checkbox"
@@ -607,7 +617,9 @@ export const CreateToken: FC = () => {
                 <label className="label cursor-pointer">
                   <span className="label-text">Update Authorities</span>
                   <input
-                  onChange={(e) => setUpdateAuthority((prevState) => !prevState)}
+                    onChange={(e) =>
+                      setUpdateAuthority((prevState) => !prevState)
+                    }
                     type="checkbox"
                     defaultChecked
                     className="checkbox"
@@ -632,7 +644,7 @@ export const CreateToken: FC = () => {
               });
             }}
           >
-            Create ({process.env.NEXT_PUBLIC_TOKEN_CREATE_FEES_AMOUNT} SOL)
+            Create
           </button>
           <div className="flex">
             <div className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-1">
@@ -726,6 +738,7 @@ export const CreateToken: FC = () => {
           </div>
         </div>
       </div>
+      <Toaster />
     </div>
   );
 };

@@ -1,33 +1,46 @@
 import {
-  AnchorProvider,
-  BN,
-  Program,
-  Wallet,
-  getProvider,
-} from "@coral-xyz/anchor";
-import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
-import { OpenBookV2Client } from "@openbook-dex/openbook-v2";
+  ACCOUNT_SIZE,
+  createInitializeAccountInstruction,
+  createInitializeMintInstruction,
+  getMinimumBalanceForRentExemptMint,
+  getMint,
+  MINT_SIZE,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token-2";
+import { DexInstructions, Market } from "@project-serum/serum";
+
 import {
-  DEVNET_PROGRAM_ID,
-  MAINNET_PROGRAM_ID,
-  MarketV2,
-  TxVersion,
-  buildSimpleTransaction,
-} from "@raydium-io/raydium-sdk";
-import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { Button } from "@solana/wallet-adapter-react-ui/lib/types/Button";
-import {
-  Connection,
   Keypair,
-  LAMPORTS_PER_SOL,
   PublicKey,
   SystemProgram,
   Transaction,
-  clusterApiUrl,
+  TransactionInstruction,
 } from "@solana/web3.js";
-import base58 from "bs58";
+import {
+  EVENT_QUEUE_LENGTH,
+  getVaultOwnerAndNonce,
+  ORDERBOOK_LENGTH,
+  REQUEST_QUEUE_LENGTH,
+} from "../../utils/serum";
+import BN from "bn.js";
+
+import {
+  sendSignedTransaction,
+  signTransactions,
+  TransactionWithSigners,
+} from "../../utils/transaction";
+import { OpenBookV2Client } from "@openbook-dex/openbook-v2";
+import { SubmitHandler, useForm } from "react-hook-form";
+import { useRouter } from "next/router";
+import { toast } from "react-toastify";
+import { useSerum } from "../../context";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { tokenAtomicsToPrettyDecimal } from "../../utils/numerical";
+
 import React, { useEffect, useState } from "react";
-import { notify } from "utils/notifications";
+import useSerumMarketAccountSizes from "../../hooks/useSerumMarketAccountSizes";
+import TransactionToast from "../../components/common/Toasts/TransactionToast";
+
 import {
   addLookupTableInfo,
   buildAndSendTx,
@@ -35,224 +48,531 @@ import {
   sendTransactions,
   wallet,
 } from "utils/util";
+import useRentExemption from "../../hooks/useRentExemption";
+import ExistingMintForm from "../../components/createMarket/ExistingMintForm";
+import TickerForm from "../../components/createMarket/TickerForm";
+import AdvancedOptionsForm from "../../components/createMarket/AdvancedOptionsForm";
+
+const TRANSACTION_MESSAGES = [
+  {
+    sendingMessage: "Creating mints.",
+    successMessage: "Created mints successfully.",
+  },
+  {
+    sendingMessage: "Creating vaults.",
+    successMessage: "Created vaults successfully.",
+  },
+  {
+    sendingMessage: "Creating market.",
+    successMessage: "Created market successfully.",
+  },
+];
+
+type NewMintFormValues = {
+  baseDecimals: number;
+  quoteDecimals: number;
+  baseAuthority: string;
+  quoteAuthority: string;
+};
+
+type ExistingMintFormValues = {
+  baseMint: string;
+  quoteMint: string;
+};
+
+export type CreateMarketFormValues = {
+  createMint: boolean;
+  newMints?: NewMintFormValues;
+  existingMints?: ExistingMintFormValues;
+  lotSize: number;
+  useAdvancedOptions: boolean;
+  tickSize: number;
+  eventQueueLength: number;
+  requestQueueLength: number;
+  orderbookLength: number;
+};
 
 const CreateMarket = () => {
+  const router = useRouter();
+
   const { connection } = useConnection();
-  const { publicKey, sendTransaction } = useWallet();
-  const [baseDecimals, setBaseDecimals] = useState(0);
-  const [quoteDecimals, setQuoteDecimals] = useState(0);
-  const [baseToken, setBaseToken] = useState("");
-  const [quoteToken, setQuoteToken] = useState("");
-  const [lotSize, setLotSize] = useState(1);
-  const [tickSize, setTickSize] = useState(0.01);
+  const wallet = useWallet();
 
-  const RAYDIUM_PROGRAM_ID =
-    process.env.NETWORK == "mainnet" ? MAINNET_PROGRAM_ID : DEVNET_PROGRAM_ID;
+  const { programID } = useSerum();
 
-  const tokenDecimal = async (tokenAddress: any) => {
-    try {
-      const token = new PublicKey(tokenAddress);
-      const tokenAccountInfo = await connection.getAccountInfo(token);
-      if (!tokenAccountInfo) {
-        throw new Error("Could not find the token account");
+  const { register, handleSubmit, watch, setValue, formState, clearErrors } =
+    useForm<CreateMarketFormValues>({
+      defaultValues: {
+        createMint: true,
+      },
+    });
+
+  const createMint = watch("createMint");
+  const useAdvancedOptions = watch("useAdvancedOptions");
+
+  const eventQueueLength = watch("eventQueueLength");
+  const requestQueueLength = watch("requestQueueLength");
+  const orderbookLength = watch("orderbookLength");
+
+  const mintRent = useRentExemption(createMint ? MINT_SIZE : 0);
+  const vaultRent = useRentExemption(ACCOUNT_SIZE);
+
+  const {
+    marketRent,
+    totalEventQueueSize,
+    totalOrderbookSize,
+    totalRequestQueueSize,
+  } = useSerumMarketAccountSizes({
+    eventQueueLength,
+    requestQueueLength,
+    orderbookLength,
+  });
+
+  useEffect(() => {
+    if (!useAdvancedOptions) {
+      setValue("eventQueueLength", EVENT_QUEUE_LENGTH);
+      setValue("requestQueueLength", REQUEST_QUEUE_LENGTH);
+      setValue("orderbookLength", ORDERBOOK_LENGTH);
+    }
+  }, [useAdvancedOptions, setValue]);
+
+  useEffect(() => {
+    if (createMint) {
+      setValue("existingMints", undefined);
+      clearErrors("existingMints");
+    } else {
+      setValue("newMints", undefined);
+      clearErrors("newMints");
+    }
+  }, [createMint, setValue, clearErrors]);
+
+  // TODO: refactor somewhere else
+  const handleCreateMarket: SubmitHandler<CreateMarketFormValues> = async (
+    data
+  ) => {
+    if (!wallet || !wallet.publicKey) {
+      toast.error("Wallet not connected");
+      return;
+    }
+
+    let baseMintKeypair: Keypair | undefined;
+    let baseMint: PublicKey;
+    let baseMintDecimals: number;
+
+    let quoteMintKeypair: Keypair | undefined;
+    let quoteMint: PublicKey;
+    let quoteMintDecimals: number;
+
+    const mintInstructions: TransactionInstruction[] = [];
+    const mintSigners: Keypair[] = [];
+
+    const vaultInstructions: TransactionInstruction[] = [];
+    const vaultSigners: Keypair[] = [];
+
+    const marketInstructions: TransactionInstruction[] = [];
+    const marketSigners: Keypair[] = [];
+
+    // validate existing mints
+      try {
+        const baseMintInfo = await getMint(
+          connection,
+          new PublicKey(data.existingMints!.baseMint)
+        );
+        baseMint = baseMintInfo.address;
+        baseMintDecimals = baseMintInfo.decimals;
+
+        const quoteMintInfo = await getMint(
+          connection,
+          new PublicKey(data.existingMints!.quoteMint)
+        );
+        quoteMint = quoteMintInfo.address;
+        quoteMintDecimals = quoteMintInfo.decimals;
+      } catch (e) {
+        toast.error("Invalid mints provided.");
+        return;
       }
-      const tokenDecimals = tokenAccountInfo.data[44];
-      return tokenDecimals;
-    } catch (error) {
-      console.error(error);
+
+    const marketAccounts = {
+      market: Keypair.generate(),
+      requestQueue: Keypair.generate(),
+      eventQueue: Keypair.generate(),
+      bids: Keypair.generate(),
+      asks: Keypair.generate(),
+      baseVault: Keypair.generate(),
+      quoteVault: Keypair.generate(),
+    };
+
+    const [vaultOwner, vaultOwnerNonce] = await getVaultOwnerAndNonce(
+      marketAccounts.market.publicKey,
+      programID
+    );
+
+    // create vaults
+    vaultInstructions.push(
+      ...[
+        SystemProgram.createAccount({
+          fromPubkey: wallet.publicKey,
+          newAccountPubkey: marketAccounts.baseVault.publicKey,
+          lamports: await connection.getMinimumBalanceForRentExemption(
+            ACCOUNT_SIZE
+          ),
+          space: ACCOUNT_SIZE,
+          programId: TOKEN_PROGRAM_ID,
+        }),
+        SystemProgram.createAccount({
+          fromPubkey: wallet.publicKey,
+          newAccountPubkey: marketAccounts.quoteVault.publicKey,
+          lamports: await connection.getMinimumBalanceForRentExemption(
+            ACCOUNT_SIZE
+          ),
+          space: ACCOUNT_SIZE,
+          programId: TOKEN_PROGRAM_ID,
+        }),
+        createInitializeAccountInstruction(
+          marketAccounts.baseVault.publicKey,
+          baseMint,
+          vaultOwner
+        ),
+        createInitializeAccountInstruction(
+          marketAccounts.quoteVault.publicKey,
+          quoteMint,
+          vaultOwner
+        ),
+      ]
+    );
+
+    vaultSigners.push(marketAccounts.baseVault, marketAccounts.quoteVault);
+
+    // tickSize and lotSize here are the 1e^(-x) values, so no check for ><= 0
+    const baseLotSize = Math.round(
+      10 ** baseMintDecimals * Math.pow(10, -1 * data.lotSize)
+    );
+    const quoteLotSize = Math.round(
+      10 ** quoteMintDecimals *
+        Math.pow(10, -1 * data.lotSize) *
+        Math.pow(10, -1 * data.tickSize)
+    );
+
+    // create market account
+    marketInstructions.push(
+      SystemProgram.createAccount({
+        newAccountPubkey: marketAccounts.market.publicKey,
+        fromPubkey: wallet.publicKey,
+        space: Market.getLayout(programID).span,
+        lamports: await connection.getMinimumBalanceForRentExemption(
+          Market.getLayout(programID).span
+        ),
+        programId: programID,
+      })
+    );
+
+    // create request queue
+    marketInstructions.push(
+      SystemProgram.createAccount({
+        newAccountPubkey: marketAccounts.requestQueue.publicKey,
+        fromPubkey: wallet.publicKey,
+        space: totalRequestQueueSize,
+        lamports: await connection.getMinimumBalanceForRentExemption(
+          totalRequestQueueSize
+        ),
+        programId: programID,
+      })
+    );
+
+    // create event queue
+    marketInstructions.push(
+      SystemProgram.createAccount({
+        newAccountPubkey: marketAccounts.eventQueue.publicKey,
+        fromPubkey: wallet.publicKey,
+        space: totalEventQueueSize,
+        lamports: await connection.getMinimumBalanceForRentExemption(
+          totalEventQueueSize
+        ),
+        programId: programID,
+      })
+    );
+
+    const orderBookRentExempt =
+      await connection.getMinimumBalanceForRentExemption(totalOrderbookSize);
+
+    // create bids
+    marketInstructions.push(
+      SystemProgram.createAccount({
+        newAccountPubkey: marketAccounts.bids.publicKey,
+        fromPubkey: wallet.publicKey,
+        space: totalOrderbookSize,
+        lamports: orderBookRentExempt,
+        programId: programID,
+      })
+    );
+
+    // create asks
+    marketInstructions.push(
+      SystemProgram.createAccount({
+        newAccountPubkey: marketAccounts.asks.publicKey,
+        fromPubkey: wallet.publicKey,
+        space: totalOrderbookSize,
+        lamports: orderBookRentExempt,
+        programId: programID,
+      })
+    );
+
+    marketSigners.push(
+      marketAccounts.market,
+      marketAccounts.requestQueue,
+      marketAccounts.eventQueue,
+      marketAccounts.bids,
+      marketAccounts.asks
+    );
+
+    marketInstructions.push(
+      DexInstructions.initializeMarket({
+        market: marketAccounts.market.publicKey,
+        requestQueue: marketAccounts.requestQueue.publicKey,
+        eventQueue: marketAccounts.eventQueue.publicKey,
+        bids: marketAccounts.bids.publicKey,
+        asks: marketAccounts.asks.publicKey,
+        baseVault: marketAccounts.baseVault.publicKey,
+        quoteVault: marketAccounts.quoteVault.publicKey,
+        baseMint,
+        quoteMint,
+        baseLotSize: new BN(baseLotSize),
+        quoteLotSize: new BN(quoteLotSize),
+        feeRateBps: 150, // Unused in v3
+        quoteDustThreshold: new BN(500), // Unused in v3
+        vaultSignerNonce: vaultOwnerNonce,
+        programId: programID,
+      })
+    );
+
+    const transactionWithSigners: TransactionWithSigners[] = [];
+    if (mintInstructions.length > 0) {
+      transactionWithSigners.push({
+        transaction: new Transaction().add(...mintInstructions),
+        signers: mintSigners,
+      });
+    }
+    transactionWithSigners.push(
+      {
+        transaction: new Transaction().add(...vaultInstructions),
+        signers: vaultSigners,
+      },
+      {
+        transaction: new Transaction().add(...marketInstructions),
+        signers: marketSigners,
+      }
+    );
+
+    try {
+      const signedTransactions = await signTransactions({
+        transactionsAndSigners: transactionWithSigners,
+        wallet,
+        connection,
+      });
+
+      // looping creates weird indexing issue with transactionMessages
+      await sendSignedTransaction({
+        signedTransaction: signedTransactions[0],
+        connection,
+        skipPreflight: false,
+        successCallback: async (txSig) => {
+          toast(
+            () => (
+              <TransactionToast
+                txSig={txSig}
+                message={
+                  signedTransactions.length > 2
+                    ? TRANSACTION_MESSAGES[0].successMessage
+                    : TRANSACTION_MESSAGES[1].successMessage
+                }
+              />
+            ),
+            { autoClose: 5000 }
+          );
+        },
+        sendingCallback: async () => {
+          toast.info(
+            signedTransactions.length > 2
+              ? TRANSACTION_MESSAGES[0].sendingMessage
+              : TRANSACTION_MESSAGES[1].sendingMessage,
+            {
+              autoClose: 2000,
+            }
+          );
+        },
+      });
+      await sendSignedTransaction({
+        signedTransaction: signedTransactions[1],
+        connection,
+        skipPreflight: false,
+        successCallback: async (txSig) => {
+          toast(
+            () => (
+              <TransactionToast
+                txSig={txSig}
+                message={
+                  signedTransactions.length > 2
+                    ? TRANSACTION_MESSAGES[1].successMessage
+                    : TRANSACTION_MESSAGES[2].successMessage
+                }
+              />
+            ),
+            { autoClose: 5000 }
+          );
+        },
+        sendingCallback: async () => {
+          toast.info(
+            signedTransactions.length > 2
+              ? TRANSACTION_MESSAGES[1].sendingMessage
+              : TRANSACTION_MESSAGES[2].sendingMessage,
+            {
+              autoClose: 2000,
+            }
+          );
+        },
+      });
+
+      if (signedTransactions.length > 2) {
+        await sendSignedTransaction({
+          signedTransaction: signedTransactions[2],
+          connection,
+          skipPreflight: false,
+          successCallback: async (txSig) => {
+            toast(
+              () => (
+                <TransactionToast
+                  txSig={txSig}
+                  message={TRANSACTION_MESSAGES[2].successMessage}
+                />
+              ),
+              { autoClose: 5000 }
+            );
+          },
+          sendingCallback: async () => {
+            toast.info(TRANSACTION_MESSAGES[2].sendingMessage, {
+              autoClose: 2000,
+            });
+          },
+        });
+      }
+
+      router.push({
+        pathname: `market/${marketAccounts.market.publicKey.toBase58()}`,
+        query: router.query,
+      });
+    } catch (e) {
+      console.error("[explorer]: ", e);
+      toast.error("Failed to create market.");
     }
   };
-
-  // async function onClick() {
-  //   try {
-  //     const feesTransactionInstruction = SystemProgram.transfer({
-  //       fromPubkey: publicKey,
-  //       toPubkey: new PublicKey(process.env.NEXT_PUBLIC_FEES_ADDRESS),
-  //       lamports: (process.env.NEXT_PUBLIC_TOKEN_MARKET_CREATE_FEES_AMOUNT as any) * LAMPORTS_PER_SOL,
-  //     });
-  //     const wall = new NodeWallet(wallet);
-  //     const provider = new AnchorProvider(connection, wall, {
-  //       commitment: "confirmed",
-  //     });
-  //     const programId = new PublicKey(
-  //       "opnb2LAfJYbRMAHHvqjCwQxanZn7ReEHp1k81EohpZb"
-  //     );
-  //     const client = new OpenBookV2Client(provider, programId);
-  //     console.log(
-  //       "starting with balance: ",
-  //       await provider.connection.getBalance(wallet.publicKey)
-  //     );
-  //     const [ixs, signers] = await client.createMarketIx(
-  //       wallet.publicKey,
-  //       "BLAH-BLAH2",
-  //       new PublicKey(baseToken),
-  //       new PublicKey(quoteToken),
-  //       new BN(1),
-  //       new BN(1000000),
-  //       new BN(1000),
-  //       new BN(1000),
-  //       new BN(0),
-  //       null,
-  //       null,
-  //       null,
-  //       null,
-  //       null
-  //     );
-  //     console.log("ixs: ", ixs);
-  //     console.log("signers: ", signers);
-  //     // const tx = await client.sendAndConfirmTransaction(ixs, {
-  //     //     additionalSigners: signers,
-  //     // })
-  //     ixs.push(feesTransactionInstruction);
-  //     const transaction = new Transaction().add(...ixs);
-  //     const tx = await sendTransaction(transaction, connection);
-  //     notify({ message: `Market Created: ${tx}`, type: "success" });
-  //     console.log("created market", tx);
-  //     console.log(
-  //       "finished with balance: ",
-  //       await connection.getBalance(wallet.publicKey)
-  //     );
-  //   } catch (error) {
-  //     notify({ message: error.message, type: "error" });
-  //   }
-  // }
-
-  const onClick = async () => {
-    try {
-      
-    } catch (e) {
-      notify({ message: e.message, type: "error" });
-    }
-  }
-
   return (
-    <div className="mockup-window bg-base-300 w-[82vw] m-auto mt-2 md:w-[85vw]">
-      <div className="bg-base-200 p-5">
-        <div className="grid grid-cols-1 md:grid-cols-2 justify-items-center items-center gap-3">
-          <div className="indicator">
-            <span className="indicator-item badge">Base Token</span>
-            <input
-              type="text"
-              placeholder="Address..."
-              className="input input-bordered w-full md:w-[30vw]"
-              onChange={(e) => setBaseToken(e.target.value)}
-            />
+    <form onSubmit={handleSubmit(handleCreateMarket)}>
+      <div className="mockup-window bg-base-300 w-[82vw] m-auto mt-2 md:w-[85vw]">
+        <div className="bg-base-200 p-5">
+          <div>
+            <div>
+              <h1 className="text-center text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-tr from-[#9945FF] to-[#14F195] p-10">
+                Create Market
+              </h1>
+            </div>
           </div>
-          <div className="indicator">
-            <span className="indicator-item badge">Quote Token</span>
-            <input
-              type="text"
-              placeholder="Address..."
-              className="input input-bordered w-full md:w-[30vw]"
-              onChange={(e) => setQuoteToken(e.target.value)}
-            />
+          <div className="grid grid-cols-1 gap-5">
+            <ExistingMintForm register={register} formState={formState} />
+            <TickerForm register={register} />
+            <div className="grid grid-cols-1 md:grid-cols-2 justify-center items-center align-middle">
+              <AdvancedOptionsForm
+                useAdvancedOptions={useAdvancedOptions}
+                register={register}
+                setValue={setValue}
+                formState={formState}
+                totalMarketAccountSizes={{
+                  totalEventQueueSize,
+                  totalRequestQueueSize,
+                  totalOrderbookSize,
+                }}
+              />
+              <div className="md:col-span-1">
+                <h3 className="text-lg font-medium leading-6 text-slate-200">
+                  Advanced Options
+                </h3>
+                <p className="mt-1 text-sm text-slate-400">
+                  Configure sizes for the different accounts used to create the
+                  market to adjust rent cost.
+                </p>
+                <div className="mt-6">
+                  <div className="mb-1 flex items-center space-x-1">
+                    <p className="text-xs text-slate-300">
+                      Total Rent Estimate{" "}
+                    </p>
+                  </div>
+
+                  <p className="text-lg text-cyan-400">
+                    {tokenAtomicsToPrettyDecimal(
+                      new BN(marketRent + vaultRent * 2 + mintRent * 2),
+                      9
+                    )}{" "}
+                    SOL{" "}
+                  </p>
+                </div>
+                <div className="flex justify-end w-full">
+                  <button className="w-full md:max-w-xs rounded-lg p-2 bg-cyan-500 hover:bg-cyan-600 transition-colors disabled:opacity-20">
+                    Create
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="indicator">
-            <span className="indicator-item badge">Min Order Size</span>
-            <input
-              type="number"
-              placeholder="Type here"
-              className="input input-bordered w-full md:w-[30vw]"
-              onChange={(e) => setLotSize(parseInt(e.target.value))}
-            />
+
+          {/* <div className="form-control pl-[6rem] w-[20%]">
+            <label className="cursor-pointer label">
+              <span className="label-text">Advance Options</span>
+              <input
+                type="checkbox"
+                className="toggle toggle-primary"
+                // onChange={(e) => {
+                //   setisSocialsEnabled((prev) => !prev);
+                // }}
+              />
+            </label>
+          </div> */}
+          {/* <div className="indicator">
+              <span className="indicator-item badge">Event Queue Length</span>
+              <input
+                type="number"
+                placeholder="Type here"
+                className="input input-bordered w-full md:w-[19vw]"
+                onChange={(e) => setTickSize(parseFloat(e.target.value))}
+              />
+            </div>
+            <div className="indicator">
+              <span className="indicator-item badge">Request Length</span>
+              <input
+                type="number"
+                placeholder="Type here"
+                className="input input-bordered w-full md:w-[19vw]"
+                onChange={(e) => setTickSize(parseFloat(e.target.value))}
+              />
+            </div>
+            <div className="indicator">
+              <span className="indicator-item badge">Orderbook Length</span>
+              <input
+                type="number"
+                placeholder="Type here"
+                className="input input-bordered w-full md:w-[19vw]"
+                onChange={(e) => setTickSize(parseFloat(e.target.value))}
+              />
+            </div>
           </div>
-          <div className="indicator">
-            <span className="indicator-item badge">Tick Size</span>
-            <input
-              type="number"
-              placeholder="Type here"
-              className="input input-bordered w-full md:w-[30vw]"
-              onChange={(e) => setTickSize(parseFloat(e.target.value))}
-            />
+          <div className="flex justify-around p-5 align-middle items-center">
+            <button className="btn btn-outline" onClick={onClick}>
+              Create ({process.env.NEXT_PUBLIC_TOKEN_MARKET_CREATE_FEES_AMOUNT}{" "}
+              SOL)
+            </button>
           </div>
-        </div>
-        <div className="form-control pl-[6rem] w-[20%]">
-          <label className="cursor-pointer label">
-            <span className="label-text">Advance Options</span>
-            <input
-              type="checkbox"
-              className="toggle toggle-primary"
-              // onChange={(e) => {
-              //   setisSocialsEnabled((prev) => !prev);
-              // }}
-            />
-          </label>
-        </div>
-        <div className="grid grid-cols-1 px-6 md:grid-cols-3 justify-items-center items-center gap-1">
-        <div className="indicator">
-            <span className="indicator-item badge">Event Queue Length</span>
-            <input
-              type="number"
-              placeholder="Type here"
-              className="input input-bordered w-full md:w-[19vw]"
-              onChange={(e) => setTickSize(parseFloat(e.target.value))}
-            />
-          </div>
-          <div className="indicator">
-            <span className="indicator-item badge">Request Length</span>
-            <input
-              type="number"
-              placeholder="Type here"
-              className="input input-bordered w-full md:w-[19vw]"
-              onChange={(e) => setTickSize(parseFloat(e.target.value))}
-            />
-          </div>
-          <div className="indicator">
-            <span className="indicator-item badge">Orderbook Length</span>
-            <input
-              type="number"
-              placeholder="Type here"
-              className="input input-bordered w-full md:w-[19vw]"
-              onChange={(e) => setTickSize(parseFloat(e.target.value))}
-            />
-          </div>
-        </div>
-        <div className="flex justify-around p-5 align-middle items-center">
-          <button className="btn btn-outline" onClick={onClick}>
-            Create ({process.env.NEXT_PUBLIC_TOKEN_MARKET_CREATE_FEES_AMOUNT} SOL)
-          </button>
+        </div> */}
         </div>
       </div>
-    </div>
-    //   <div>
-    //     <div>
-    //         <h1 className="text-center text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-tr from-[#9945FF] to-[#14F195] p-10">
-    //             Create Market
-    //         </h1>
-    //     </div>
-    //     <div className='flex flex-col items-center justify-center'>
-    //         <input
-    //             type="text"
-    //             className="form-control block mb-2 px-4 py-2 text-xl font-normal text-gray-700 bg-white bg-clip-padding border border-solid border-gray-300 rounded transition ease-in-out m-0 focus:text-gray-700 focus:bg-white focus:border-blue-600 focus:outline-none"
-    //             placeholder="Base Token"
-    //             onChange={(e) => setBaseToken(e.target.value)}
-    //         />
-    //         <input
-    //             type="text"
-    //             className="form-control block mb-2 px-4 py-2 text-xl font-normal text-gray-700 bg-white bg-clip-padding border border-solid border-gray-300 rounded transition ease-in-out m-0 focus:text-gray-700 focus:bg-white focus:border-blue-600 focus:outline-none"
-    //             placeholder="Quote Token"
-    //             onChange={(e) => setQuoteToken(e.target.value)}
-    //         />
-    //         <input
-    //             type="number"
-    //             className="form-control block mb-2 px-4 py-2 text-xl font-normal text-gray-700 bg-white bg-clip-padding border border-solid border-gray-300 rounded transition ease-in-out m-0 focus:text-gray-700 focus:bg-white focus:border-blue-600 focus:outline-none"
-    //             placeholder="Lot Size"
-    //             onChange={(e) => setLotSize(parseInt(e.target.value))}
-    //         />
-    //         <input
-    //             type="number"
-    //             className="form-control block mb-2 px-4 py-2 text-xl font-normal text-gray-700 bg-white bg-clip-padding border border-solid border-gray-300 rounded transition ease-in-out m-0 focus:text-gray-700 focus:bg-white focus:border-blue-600 focus:outline-none"
-    //             placeholder="Tick Size"
-    //             onChange={(e) => setTickSize(parseFloat(e.target.value))}
-    //         />
-    //         <a href='https://smithii.io/wp-content/uploads/2024/03/MIN-ORDER-SIZE-TICK-SIZE-GUIDE-SMITHII.png' className=''>Guide</a>
-    //         <button
-    //             className="px-8 m-2 btn animate-pulse bg-gradient-to-r from-[#9945FF] to-[#14F195] hover:from-pink-500 hover:to-yellow-500 ..."
-    //             onClick={onClick}>
-    //             <span>Create Token</span>
-    //         </button>
-    //     </div>
-    // </div>
+    </form>
   );
 };
 

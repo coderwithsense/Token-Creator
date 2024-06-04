@@ -1,4 +1,4 @@
-import { AuthorityType, createRevokeInstruction, createSetAuthorityInstruction, setAuthority } from '@solana/spl-token';
+import { AuthorityType, createRevokeInstruction, createSetAuthorityInstruction, setAuthority } from '@solana/spl-token-2';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
 import React from 'react'

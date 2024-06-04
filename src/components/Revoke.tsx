@@ -1,5 +1,5 @@
 import { token } from "@coral-xyz/anchor/dist/cjs/utils";
-import { TOKEN_PROGRAM_ID, createRevokeInstruction, createSetAuthorityInstruction } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, createRevokeInstruction, createSetAuthorityInstruction } from "@solana/spl-token-2";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import React, { useEffect, useState } from "react";

@@ -1,7 +1,7 @@
 import { FC, useCallback } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { Transaction, Keypair, SystemProgram } from '@solana/web3.js';
-import { AccountLayout, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { AccountLayout, TOKEN_PROGRAM_ID } from '@solana/spl-token-2';
 
 export const CreateAccountError: FC = () => {
   const { connection } = useConnection();

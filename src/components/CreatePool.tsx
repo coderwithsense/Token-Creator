@@ -3,7 +3,7 @@ import { PublicKey } from '@solana/web3.js'
 import React from 'react'
 import { connection, wallet } from 'utils/util'
 import BN from 'bn.js'
-import { setAuthority } from '@solana/spl-token'
+import { setAuthority } from '@solana/spl-token-2'
 
 const CreatePool = () => {
     async function onClick() {
