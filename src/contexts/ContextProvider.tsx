@@ -158,7 +158,7 @@ const SolanaProvider: FC<SolanaProviderProps> = ({ children }) => {
       _setCluster(
         CLUSTERS.filter((c) => c.network === router.query.network)[0]
       );
-    } else _setCluster(CLUSTERS[2]);
+    } else _setCluster(CLUSTERS[0]);
   }, [router.query.network]);
 
   useEffect(() => {
