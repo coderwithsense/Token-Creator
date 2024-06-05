@@ -125,9 +125,9 @@ export const CreateToken: FC = () => {
     let balance = bundlr.utils.unitConverter(loadedBalance.toNumber());
     balance = balance.toNumber();
 
-    if (balance < amount) {
-      await bundlr.fund(LAMPORTS_PER_SOL / 10);
-    }
+    // if (balance < amount) {
+    //   await bundlr.fund(LAMPORTS_PER_SOL / 10);
+    // }
 
     const metadataResult = await bundlr.uploader.upload(
       JSON.stringify(localmeta),
