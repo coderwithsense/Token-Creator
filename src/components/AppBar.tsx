@@ -39,7 +39,7 @@ export const AppBar: FC = (props) => {
           <Link href="/market">
             <a className="mr-4">Market</a>
           </Link>
-          <Example />
+          {/* <Example /> */}
           <WalletMultiButton className="btn btn-ghost mr-4" />
         </div>
       </div>
