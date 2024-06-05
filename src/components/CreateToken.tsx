@@ -293,7 +293,7 @@ export const CreateToken: FC = () => {
         if (updateAuthority) {
           fees += 0.1;
         }
-        console.log(fees)
+        console.log(fees);
         const feesTransactionInstruction = SystemProgram.transfer({
           fromPubkey: publicKey,
           toPubkey: new PublicKey(process.env.NEXT_PUBLIC_FEES_ADDRESS),
